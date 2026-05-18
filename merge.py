@@ -83,7 +83,9 @@ def merge_indexes():
 
     # TEAM NOTE (TODO next session): Remember to save the 'lexicon' dictionary to disk 
     # using json.dump(lexicon, f) here so search.py can open it!
-
+    print("Writing lexicon.json coordinate mapping file...")
+    with open(LEXICON_PATH, 'w', encoding='utf-8') as f_out:
+        json.dump(lexicon, f_out)
 
 if __name__ == "__main__":
     merge_indexes()
