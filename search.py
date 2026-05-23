@@ -264,19 +264,91 @@ def main():
         print(f"Initialization Failed: {e}")
         return
 
-    # The 4 mandatory queries for Assignment 3: M2
-    test_queries = [
-        "cristina lopes",
+
+    poor_queries = [
+        # POOR EFFECTIVENESS: Ubiquitous terms yield a 48.00 ms search but returns irrelevant pages
+        "computer science",
+
+        # POOR EFFECTIVENESS: Natural conversational phrasing runs in 165.41 ms but returns irrelevant pages
+        "what are the software engineering bachelors graduation requirements for uci",
+
+        # POOR EFFECTIVENESS: Long structural phrase hits 170.31 ms but returns irrelevant pages
+        "what are the prerequisite classes for machine learning",
+
+        # POOR EFFECTIVENESS: High-frequency terms execute in a rapid 16.83 ms but returns irrelevant pages
+        "software engineering",
+
+        # POOR EFFECTIVENESS: Conversational string hits 135.89 ms but returns irrelevant pages
+        "how do I apply for graduation in computer science bachelors uci",
+
+        # POOR EFFECTIVENESS: Specific query runs in 204.19 ms but returns irrelevant pages
+        "what is the room number of professor lopes office",
+
+        # POOR EFFECTIVENESS: High-frequency words run in a fast 95.81 ms but returns irrelevant pages
+        "research project and systems",
+
+        # POOR EFFECTIVENESS: Extremely fast 3.28 ms lookup but returns irrelevant pages
+        "phd graduate advisor",
+
+        # POOR EFFECTIVENESS: Runs efficiently in 25.68 ms but returns irrelevant pages
+        "science data center",
+
+        # POOR EFFECTIVENESS: Completes in a fast 26.20 ms but returns irrelevant pages
+        "information technology",
+
+        # POOR EFFECTIVENESS: URL tokens run in 78.54 ms but return a wall of near-duplicate historical DokuWiki parameters (?rev=).
+        "https://ics.uci.edu",
+
+        # POOR EFFECTIVENESS: URL tokens run in 13.91 ms but return irrelevant pages
+        "algorithmic design",
+
+        # ZERO RESULTS: Completes in under 1.00 ms but strict AND logic crashes on "cv" because no page contains all three terms.
+        "raymond klefstad cv",
+
+        # ZERO RESULTS: Long conversational fallback runs in 162.32 ms but drops to empty because of strict multi-pointer matching.
+        "how do I apply for transfer from community college to uci software engineering major bachelors undergraduate fall 2027 requirements",
+    ]
+
+    good_queries = [
+        # GOOD PERFORMANCE: Highly efficient 5.93 ms execution owing to strict two-pointer subset pruning on a small postings intersection.
+        "lopes research",
+
+        # GOOD PERFORMANCE: Sub-millisecond 0.09 ms search utilizing a single unique token lookup to directly pull foundational homepages.
+        "mondego",
+
+        # GOOD PERFORMANCE: Completes in 20.87 ms, demonstrating superb list filtering and ranking by mapping concise office portals.
+        "ics student affairs",
+
+        # GOOD PERFORMANCE: Runs efficiently in 12.77 ms, successfully isolating focused curricular tracks via short keyword groupings.
+        "informatics core course",
+
+        # GOOD PERFORMANCE: Resolves in 15.14 ms as prominent institutional heading tags match the target terms to elevate authoritative anchors.
+        "donald bren school",
+
+        # GOOD PERFORMANCE: Executes in 26.51 ms, matching specialized directory layouts by leveraging structural header importance tags.
+        "computer science lecture schedule",
+
+        # GOOD PERFORMANCE: Fast 2.64 ms query latency achieved via shortest-first sorting optimizations on a small bounding postings set.
+        "cybersecurity lab",
+
+        # GOOD PERFORMANCE: High-efficiency 2.49 ms runtime due to a highly constrained comparison window inside the main evaluation block.
+        "medical informatics",
+
+        # GOOD PERFORMANCE: Solid 37.70 ms execution speed despite high-frequency terms, thanks to optimized linear array traversal loops.
+        "computing systems",
+
+        # GOOD PERFORMANCE: Finishes in 13.94 ms, validating excellent suffix reduction and index matching via grammatical root stemming.
+        "algorithmic design",
+
+        # GOOD PERFORMANCE: Fast 17.12 ms retrieval processing that accurately identifies specialized academic portal nodes using rare term weights.
         "machine learning",
-        "ACM",
-        "master of software engineering"
     ]
 
     print("\n========================================================")
     print("      UCI ICS SEARCH ENGINE - M2 BENCHMARK RUNNER       ")
     print("========================================================\n")
 
-    for query in test_queries:
+    for query in test_queries: #replace with good or poor queries
         print(f"Executing Query: '{query}'")
 
         start_time = time.time()
