@@ -265,7 +265,7 @@ def main():
         return
 
 
-    poor_queries = [
+    test_queries = [
         # POOR EFFECTIVENESS: Ubiquitous terms yield a 48.00 ms search but returns irrelevant pages
         "computer science",
 
@@ -307,6 +307,9 @@ def main():
 
         # ZERO RESULTS: Long conversational fallback runs in 162.32 ms but drops to empty because of strict multi-pointer matching.
         "how do I apply for transfer from community college to uci software engineering major bachelors undergraduate fall 2027 requirements",
+
+        # LONG QUERY TIME: Search takes ~320 ms
+        "school of donald bren computer science data science software engineering statistics informatics club and school events at uci for students to attend",
     ]
 
     good_queries = [
