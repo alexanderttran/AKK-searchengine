@@ -1,0 +1,852 @@
+=== LECTURE 21 ===
+-- Page 1 --
+Informatics 141
+Computer Science 121
+Information Retrieval
+Lecture 21
+Duplication of course material for any commercial purpose without
+the explicit written permission of the professor is prohibited.
+These course materials borrow, with permission, from those of Prof. Cristina VideiraLopes, Addison
+Wesley 2008, Chris Manning, Pandu Nayak, HinrichSch??tze, Heike Adel, Sascha Rothe, Jerome H.
+Friedman, Robert Tibshirani, and Trevor Hastie. Powerpoint theme by Prof. Andr?? van der Hoek.
+Department of Informatics, UC Irvine 1
+-- Page 2 --
+Architecture
+Ranking
+Index Creation Index
+Log
+Evaluation
+Local
+Text Acquisition UI
+Document
+Store
+Web Pages
+Department of Informatics, UC Irvine 2
+spetS
+gnissecorperP
+ssecorP
+gniyreuQ
+Text Transformation/Processing
+-- Page 3 --
+Vector space model
+Department of Informatics, UC Irvine 3
+-- Page 4 --
+Binary ??? count ??? weight matrix
+Term-document incidence ??? Term-document count matrix ??? term-document weight matrix
+Department of Informatics, UC Irvine 4
+-- Page 5 --
+Binary ??? count ??? weight matrix
+Term-document incidence ??? Term-document count matrix ??? term-document weight matrix
+Antony and Cleopatra Julius Caesar The Tempest Hamlet Othello Macbeth
+Antony 5.25 3.18 0 0 0 0.35
+Brutus 1.21 6.1 0 1 0 0
+Caesar 8.59 2.54 0 1.51 0.25 0
+Calpurnia 0 1.54 0 0 0 0
+Cleopatra 2.85 0 0 0 0 0
+mercy 1.51 0 1.9 0.12 5.25 0.88
+worser 1.37 0 0.11 4.15 0.25 1.95
+Each document is now represented by a real-valued
+vector of tf-idf weights ??? R|V|
+Department of Informatics, UC Irvine 5
+-- Page 6 --
+Sec. 6.3
+Documents as vectors
+??? So we have a |V|-dimensional vector space
+??? Terms are axes of the space
+??? Documents are points or vectors in this space
+??? Very high-dimensional: tens of millions of dimensions when
+you apply this to a web search engine
+??? These are very sparse vectors - most entries are zero.
+Department of Informatics, UC Irvine 6
+-- Page 11 --
+Queries as vectors
+??? Key idea 1: Do the same for queries: represent them as
+vectors in the space
+??? Key idea 2: Rank documents according to their proximity to
+the query in this space
+??? proximity = similarity of vectors
+??? proximity ??? inverse of distance
+??? Recall:
+??? We do this because we want to get away from the you???re-either-in-or-
+out Boolean model.
+??? Instead: rank more relevant documents higher than less relevant
+documents
+Department of Informatics, UC Irvine 11
+-- Page 15 --
+Formalizing vector space proximity
+??? First thing that comes to mind: distance between two points
+??? ( = distance between the end points of the two vectors)
+??? Euclidean distance?
+??? Euclidean distance is a bad idea . . .
+. . . because Euclidean distance is large for vectors of different lengths.
+Department of Informatics, UC Irvine 15
+-- Page 19 --
+Why Euclidean distance is (often) a bad idea
+The Euclidean
+distance between q
+and d is large even
+2
+though the
+distribution of terms
+in the query q and the
+distribution of
+terms in the
+document d are
+2
+very similar.
+Department of Informatics, UC Irvine 19
+-- Page 20 --
+What can be better?
+??? Thought experiment: take a document d and append it to
+itself. Call this document d??.
+??? ???Semantically??? d and d?? have the same content
+??? The Euclidean distance between the two documents can be quite
+large : bad!
+??? The angle between the two documents is 0, corresponding to
+maximal similarity : good!
+??? Key idea: Rank documents according to the angles between
+documents and query.
+Department of Informatics, UC Irvine 20
+-- Page 23 --
+Use angle instead of distance
+??? Thought experiment: take a document d and append it to
+itself. Call this document d??.
+??? ???Semantically??? d and d?? have the same content
+??? The Euclidean distance between the two documents can be quite
+large : bad!
+??? The angle between the two documents is 0, corresponding to
+maximal similarity : good!
+??? Key idea: Rank documents according to the angles between
+documents and query.
+Department of Informatics, UC Irvine 23
+-- Page 25 --
+From angles to cosines
+??? The following two notions are equivalent.
+??? Rank documents in decreasing order of angle(query, document)
+??? Rank documents in increasing order of cosine(query, document)
+??? Cosine is a monotonically decreasing function
+for the interval [0o, 180o]
+Department of Informatics, UC Irvine 25
+-- Page 27 --
+cosine(query, document)
+Dot product Unit vectors
+! !
+! ! V
+??
+! q d
+! q ??? d q d
+i i
+cos(q, d ) = = ??? = i=1
+! !
+!
+!
+q
+q d d V V
+?? 2 ?? 2
+q d
+i i
+i=1 i=1
+q is the tf-idf weight of term i in the query
+i
+d is the tf-idf weight of term i in the document
+i
+cos(q,d) is the cosine similarity of q and d ??? or,
+equivalently, the cosine of the angle between q and d.
+Department of Informatics, UC Irvine 27
+-- Page 28 --
+Length normalization
+??? A vector can be (length-) normalized by dividing each of its
+components by its length ??? for this we use the L norm:
+2
+!
+?? 2
+x = x
+i
+2 i
+??? Dividing a vector by its L norm makes it a unit (length) vector
+2
+(on surface of unit hypersphere)
+??? Effect on the two documents d and d?? (d appended to itself)
+from earlier slide: they have identical vectors after length-
+normalization.
+??? Long and short documents now have comparable weights
+Department of Informatics, UC Irvine 28
+-- Page 31 --
+Cosine for length-normalized vectors
+??? For length-normalized vectors, cosine similarity is simply the
+dot product (or scalar product):
+"! "!
+"! "!
+V
+??
+cos(q, d ) = q ??? d = q d
+i i
+!!
+i=1
+for q, d length-normalized.
+31
+Department of Informatics, UC Irvine 31
+-- Page 32 --
+Cosine similarity illustrated
+32
+Department of Informatics, UC Irvine 32
+-- Page 33 --
+Computing cosine scores
+33
+Department of Informatics, UC Irvine 33
+-- Page 34 --
+Cosine similarity amongst 3 documents
+??? How similar are
+the novels?
+term SaS PaP WH
+affection 115 58 20
+??? SaS: Sense and
+jealous 10 7 11
+Sensibility
+gossip 2 0 6
+??? PaP: Pride and
+Prejudice wuthering 0 0 38
+??? WH: Wuthering
+Term frequencies (counts)
+Heights?
+34
+Department of Informatics, UC Irvine 34
+-- Page 36 --
+3 documents example contd.
+Log frequency weighting
+term SaS PaP WH
+affection 3.06 2.76 2.30
+jealous 2.00 1.85 2.04
+gossip 1.30 0 1.78
+wuthering 0 0 2.58
+Department of Informatics, UC Irvine 36
+-- Page 37 --
+3 documents example contd.
+Log frequency weighting After length normalization
+term SaS PaP WH term SaS PaP WH
+affection 3.06 2.76 2.30 affection 0.789 0.832 0.524
+jealous 2.00 1.85 2.04 jealous 0.515 0.557 0.465
+gossip 1.30 0 1.78 gossip 0.335 0 0.405
+wuthering 0 0 2.58 wuthering 0 0 0.588
+Department of Informatics, UC Irvine 37
+-- Page 42 --
+tf-idf weighting has many variants
+ltc : the general standard that is usually adopted
+In parenthesis: acronyms for weight schemes.
+Department of Informatics, UC Irvine 42
+-- Page 43 --
+Weighting may differ in queries vs documents
+??? Many search engines allow for different weightings for queries vs.
+documents
+??? SMART Notation: denotes the combination in use in an engine,
+with the notation ddd.qqq, using the acronyms from the previous
+table
+??? A very standard weighting scheme is: lnc.ltc
+??? Document: logarithmic tf (l as first character), no idf and cosine
+normalization
+A bad idea?
+??? Query: logarithmic tf (l in leftmost column), idf (t in second
+column), no normalization ???
+Department of Informatics, UC Irvine 43
+-- Page 47 --
+tf-idf example: lnc.ltc (remember : ddd.qqq)
+Document: car insurance auto insurance
+Query: best car insurance
+Term Query Document Prod
+tf- tf-wt df idf wt n???liz tf-raw tf-wt wt n???liz
+raw e e
+auto 0 1
+best 1 0
+car 1 1
+insurance 1 2
+Doc length = 1 2 + 0 2 +1 2 +1.3 2 ??1.92
+Score = 0+0+0.27+0.53 = 0.8
+Department of Informatics, UC Irvine 47
+-- Page 48 --
+tf-idf example: lnc.ltc (remember : ddd.qqq)
+Document: car insurance auto insurance
+Query: best car insurance
+Term Query Document Prod
+tf- tf-wt df idf wt n???liz tf-raw tf-wt wt n???liz
+raw e e
+auto 0 0 1 1
+best 1 1 0 0
+car 1 1 1 1
+insurance 1 1 2 1.3
+Doc length = 1 2 + 0 2 +1 2 +1.3 2 ??1.92
+Score = 0+0+0.27+0.53 = 0.8
+Department of Informatics, UC Irvine 48
+-- Page 50 --
+tf-idf weighting has many variants
+ltc : standard
+In parenthesis: acronyms for weight schemes.
+Department of Informatics, UC Irvine 50
+-- Page 52 --
+tf-idf example: lnc.ltc
+Document: car insurance auto insurance
+Query: best car insurance
+Term Query Document Prod
+tf- tf-wt df idf wt n???liz tf-raw tf-wt wt n???liz
+raw e e
+auto 0 0 5000 2.3 0 0 1 1 1 0.52
+best 1 1 50000 1.3 1.3 0.34 0 0 0 0
+car 1 1 10000 2.0 2.0 0.52 1 1 1 0.52
+insurance 1 1 1000 3.0 3.0 0.78 2 1.3 1.3 0.68
+Doc length = 1 2 + 0 2 +1 2 +1.3 2 ??1.92
+Department of Informatics, UC Irvine 52
+-- Page 54 --
+Summary ??? vector space ranking
+1. Represent the query as a weighted tf-idf vector
+2. Represent each document as a weighted tf-idf vector
+Department of Informatics, UC Irvine 54
+-- Page 55 --
+Summary ??? vector space ranking
+1. Represent the query as a weighted tf-idf vector
+2. Represent each document as a weighted tf-idf vector
+3. Compute the cosine similarity score for the query vector and
+each document vector
+Department of Informatics, UC Irvine 55
+
+=== LECTURE 22 ===
+-- Page 1 --
+Informatics 141
+Computer Science 121
+Information Retrieval
+Lecture 22
+Duplication of course material for any commercial purpose without
+the explicit written permission of the professor is prohibited.
+These course materials borrow, with permission, from those of Prof. Cristina Videira Lopes, Addison
+Wesley 2008, Chris Manning, Pandu Nayak, Hinrich Sch??tze, Heike Adel, Sascha Rothe, Jerome H.
+Friedman, Robert Tibshirani, and Trevor Hastie. Powerpoint theme by Prof. Andr?? van der Hoek.
+Department of Informatics, UC Irvine 1
+-- Page 2 --
+Scoring and result assembly
+Information Retrieval
+These course materials borrow, with permission, from those of Prof. Cristina Videira Lopes, and additional
+materials from Addison Wesley 2008, Chris Manning, Pandu Nayak, Hinrich Sch??tze, Heike Adel and Sascha Rothe
+Department of Informatics, UC Irvine 2
+-- Page 3 --
+Architecture
+Ranking
+Index Creation Index
+Log
+Evaluation
+Local
+Text Acquisition UI
+Document
+Store
+Web Pages
+Department of Informatics, UC Irvine 3
+spetS
+gnissecorperP
+ssecorP
+gniyreuQ
+Text Transformation/Processing
+-- Page 4 --
+Recap: tf-idf weighting
+??? The tf-idf weight of a term is the product of its tf weight and its
+idf weight.
+= + ??
+w (1 log tf ) log (N / df )
+10 t,d 10 t
+t,d
+??? Best known weighting scheme in information retrieval
+??? Increases with the number of occurrences within a document
+??? Increases with the rarity of the term in the collection
+Department of Informatics, UC Irvine 4
+-- Page 5 --
+Recap: Queries as vectors
+??? Key idea 1: Do the same for queries: represent them as
+vectors in the space
+??? Key idea 2: Rank documents according to their proximity to
+the query in this space
+??? proximity = similarity of vectors
+??? proximity ??? inverse of distance
+Department of Informatics, UC Irvine 5
+-- Page 6 --
+Recap: cosine(query,document)
+Dot product Unit vectors
+??? ???
+??? ???
+???
+???V
+??? q ??? d q d q d
+i i
+cos(q, d ) = ??? = ??? ??? ??? = i=1
+???
+q d q d ???V
+2
+???V
+2
+q d
+i i
+i=1 i=1
+cos(q,d) is the cosine similarity of q and d ??? or,
+equivalently, the cosine of the angle between q and d.
+Department of Informatics, UC Irvine 6
+-- Page 7 --
+Simple tf-idf vs. cosine scoring
+term2
+By euclidean tf-idf:
+d2, d1
+By cosine:
+d2 d1
+d1, d2
+1 q
+1
+term1
+7
+Department of Informatics, UC Irvine 7
+-- Page 8 --
+Now???
+??? Speeding up vector space ranking
+??? Starting to put together a complete search system
+??? Will require us to consider miscellaneous topics and heuristics
+Department of Informatics, UC Irvine 8
+-- Page 9 --
+Computing cosine scores
+Department of Informatics, UC Irvine 9
+-- Page 10 --
+Efficient cosine ranking
+??? Find the K docs in the collection ???nearest??? to the
+query ??? K largest query-doc cosines.
+??? Efficient ranking:
+??? Computing a single cosine efficiently.
+??? Choosing the K largest cosine values efficiently.
+??? Can we do this without computing all N cosines?
+Department of Informatics, UC Irvine 10
+-- Page 14 --
+Efficient cosine ranking
+??? What we???re doing in effect: solving the K-nearest neighbor
+problem for a query vector
+??? In general, we do not know how to do this efficiently for
+high-dimensional spaces
+??? But we don???t need to solve for the very high dimensional
+spaces in the context of websearch! Query vectors are highly
+sparse!
+??? The problem is solvable for short queries, and standard indexes
+support this well
+Department of Informatics, UC Irvine 14
+-- Page 18 --
+Special case ??? unweighted queries
+??? No weighting on query terms
+??? Assume each query term occurs only once
+??? Then for ranking, don???t need to normalize query vector
+Department of Informatics, UC Irvine 18
+-- Page 19 --
+Computing the K largest cosines: selection vs. sorting
+??? Typically we want to retrieve the top K docs (in the cosine
+ranking for the query)
+??? And not to totally order all docs in the collection
+??? Can we pick off docs with K highest cosines?
+??? Let J = number of docs with nonzero cosines
+??? We seek the K best of these J
+Department of Informatics, UC Irvine 19
+-- Page 22 --
+Use heap for selecting top K
+??? Binary tree in which each node???s value > the values of
+children
+??? Takes 2J operations to construct, then each of K ???winners???
+read off in 2log J steps.
+??? For J=1M, K=100, this is about ~10% of the cost of sorting!
+Department of Informatics, UC Irvine 22
+-- Page 23 --
+Bottlenecks
+??? Primary computational bottleneck in scoring: cosine
+computation
+??? Can we avoid all this computation?
+??? Yes, but may sometimes get it wrong
+??? a doc not in the top K may creep into the list of K output
+docs
+??? Is this such a bad thing?
+Department of Informatics, UC Irvine 23
+-- Page 28 --
+Cosine similarity???
+??? User has a task and a query formulation
+??? Cosine matches docs to query
+??? Thus cosine is anyway a proxy for user happiness
+??? If we get a list of K docs ???close??? to the top K by cosine
+measure, should be ok
+Department of Informatics, UC Irvine 28
+-- Page 30 --
+Cosine similarity is only a proxy!
+??? User has a task and a query formulation
+??? Cosine matches docs to query
+??? Thus cosine is anyway a proxy for user happiness
+??? If we get a list of K docs ???close??? to the top K by cosine
+measure, should be ok
+Department of Informatics, UC Irvine 30
+-- Page 32 --
+Generic approach
+??? Find a set A of contenders, with K < |A| << N
+??? A does not necessarily contain the top K,
+??? but has many docs from among the top K
+??? Return the top K docs in A
+??? Think of A as pruning non-contenders
+??? The same approach is also used for other
+(non-cosine) scoring functions
+??? Will look at several schemes following this approach
+Department of Informatics, UC Irvine 32
+-- Page 36 --
+Index elimination
+??? Basic algorithm for cosine computation only considers docs
+containing at least one query term
+??? Take this heuristic further:
+??? Only consider high-idf query terms
+??? Only consider docs containing many query terms
+Department of Informatics, UC Irvine 36
+-- Page 38 --
+Index elimination: High-idf query terms only
+??? For a query such as catcher in the rye
+??? Only accumulate scores from catcher and rye
+??? Intuition: in and the contribute little to the scores and so
+don???t alter rank-ordering much
+??? Benefit:
+??? Postings of low-idf terms have many docs ??? these (many) docs get
+eliminated from set A of contenders
+Department of Informatics, UC Irvine 38
+-- Page 41 --
+Index elimination: Docs containing many query terms
+??? Any doc with at least one query term is a candidate for the
+top K output list
+??? For multi-term queries, only compute scores for docs
+containing several of the query terms (perhaps all terms!)
+??? Say, at least 3 out of 4
+??? Imposes a ???soft conjunction??? on queries seen on web search engines
+(early Google)
+??? May end up with fewer than K candidates if too restrictive in the
+number of query terms. Add another heuristic on top: you can iterate!
+??? Easy to implement in postings traversal
+Department of Informatics, UC Irvine 41
+-- Page 46 --
+Example 3 of 4 query terms
+Query: Anthony Brutus Caesar Calpurnia
+Antony 3 4 8 16 32 64 128
+Brutus 2 4 8 16 32 64 128
+Caesar 1 2 3 5 8 13 21 34
+Calpurnia 13 16 32
+Scores only computed for docs 8, 16 and 32.
+If you only want to show 2 docs to the user, it is enough.
+If you need more, you iterate and now compute scores
+for 2 query terms also.
+Department of Informatics, UC Irvine 46
+
+=== LECTURE 23 ===
+-- Page 1 --
+Informatics 141
+Computer Science 121
+Information Retrieval
+Lecture 23
+Duplication of course material for any commercial purpose without
+the explicit written permission of the professor is prohibited.
+These course materials borrow, with permission, from those of Prof. Cristina Videira Lopes, Addison
+Wesley 2008, Chris Manning, Pandu Nayak, Hinrich Sch??tze, Heike Adel, Sascha Rothe, Jerome H.
+Friedman, Robert Tibshirani, and Trevor Hastie. Powerpoint theme by Prof. Andr?? van der Hoek.
+Department of Informatics, UC Irvine 1
+-- Page 2 --
+Architecture
+Ranking
+Index Creation Index
+Log
+Evaluation
+Local
+Text Acquisition UI
+Document
+Store
+Web Pages
+Department of Informatics, UC Irvine 2
+spetS
+gnissecorperP
+ssecorP
+gniyreuQ
+Text Transformation/Processing
+-- Page 3 --
+Generic approach
+??? Find a set A of contenders, with K < |A| << N
+??? A does not necessarily contain the top K,
+??? but has many docs from among the top K
+??? Return the top K docs in A
+??? Think of A as pruning non-contenders
+??? The same approach is also used for other
+(non-cosine) scoring functions
+??? Will look at a few schemes following this approach
+Department of Informatics, UC Irvine 3
+-- Page 4 --
+Index elimination
+??? Basic algorithm for cosine computation only considers docs
+containing at least one query term
+??? Take this heuristic further:
+??? Only consider high-idf query terms
+??? Only consider docs containing many query terms
+Department of Informatics, UC Irvine 4
+-- Page 5 --
+Champion lists
+??? Precompute for each dictionary term t, the r docs of highest
+weight in t???s postings
+??? Call this the champion list for t
+??? (aka fancy list or top docs for t)
+??? Note that r has to be chosen at index build time
+??? Thus, it???s possible that r < K
+??? At query time, only compute scores for docs in the champion
+list of some query term
+??? Pick the K top-scoring docs from amongst these
+Department of Informatics, UC Irvine 5
+-- Page 10 --
+Static quality scores
+??? We want top-ranking documents to be both relevant and
+authoritative
+??? Relevance is being modeled by cosine scores
+??? Authority is typically a query-independent property of a document
+??? Examples of authority signals
+??? Wikipedia among websites
+??? Articles in certain newspapers
+Quantitative
+??? A paper with many citations
+??? Many bitly???s, diggs or del.icio.us marks
+??? (Pagerank)
+Department of Informatics, UC Irvine 10
+-- Page 14 --
+Modeling authority
+??? Assign to each document a query-independent quality score in
+[0,1] to each document d
+??? Denote this by g(d)
+??? Thus, a quantity like the number of citations is scaled into [0,1]
+??? Exercise: suggest a formula for this.
+Department of Informatics, UC Irvine 14
+-- Page 16 --
+Net relevance score
+??? Consider a simple total score combining cosine relevance and
+authority
+??? net-score(q,d) = g(d) + cosine(q,d)
+??? Can use some other linear combination
+??? Indeed, any function of the two ???signals??? of user happiness
+??? Now we seek the top K docs by net score
+Department of Informatics, UC Irvine 16
+-- Page 17 --
+Net relevance score
+??? Consider a simple total score combining cosine relevance and
+authority
+??? net-score(q,d) = g(d) + cosine(q,d)
+??? Can use some other linear combination: g(d) + ??*cosine(q,d)
+??? Indeed, any function of the two ???signals??? of user happiness
+??? Now we seek the top K docs by net score
+Department of Informatics, UC Irvine 17
+-- Page 19 --
+Top K by net score ??? fast methods
+??? First idea: Order all postings by g(d)
+??? Key: this is a common ordering for all postings
+??? Thus, can concurrently traverse query terms??? postings for
+??? Postings intersection
+??? Cosine score computation
+Department of Informatics, UC Irvine 19
+-- Page 22 --
+Why order postings by g(d)?
+??? Under g(d)-ordering, top-scoring docs likely to appear early in
+postings traversal (remember : g(d) + ??*cosine(q,d))
+??? In time-bound applications (say, we have to return whatever
+search results we can in 50 ms), this allows us to stop
+postings traversal early
+??? Short of computing scores for all docs in postings
+Department of Informatics, UC Irvine 22
+-- Page 23 --
+Why order postings by g(d)?
+??? Under g(d)-ordering, top-scoring docs likely to appear early in
+postings traversal
+??? In time-bound applications (say, we have to return whatever
+search results we can in ~50 ms), this allows us to stop
+postings traversal early
+??? Short of computing complete scores for all docs in postings
+Department of Informatics, UC Irvine 23
+-- Page 24 --
+Champion lists in g(d)-ordering
+??? Can combine champion lists with g(d)-ordering
+??? Maintain for each term a champion list of the r docs with
+highest g(d) + tf-idf
+td
+??? Seek top-K results from only the docs in these champion lists
+Department of Informatics, UC Irvine 24
+-- Page 27 --
+Another heuristic: High and low lists
+??? For each term, we maintain two disjoint sets: high and low lists
+??? Think of high as the champion list
+??? When traversing postings on a query, traverse high lists first
+??? If we get more than K docs, select the top K and stop
+??? Else proceed to get docs from the low lists
+??? Can be used even for simple cosine scores, without global
+quality g(d)
+??? A means for segmenting index into two tiers
+Department of Informatics, UC Irvine 27
+-- Page 32 --
+Impact-ordered postings
+??? We only want to compute scores for docs for which wf is
+t,d
+high enough
+??? We sort each postings list by wf
+t,d
+??? Now: not all postings in a common order!
+??? How do we compute scores in order to pick off top K?
+??? Two ideas follow
+Department of Informatics, UC Irvine 32
+-- Page 36 --
+Idea 1. Early termination
+??? When traversing t???s postings, stop early after either
+??? a fixed number of r docs
+??? wf drops below some threshold
+t,d
+??? Take the union of the resulting sets of docs
+??? One from the postings of each query term
+??? Compute only the scores for docs in this union
+Department of Informatics, UC Irvine 36
+-- Page 39 --
+Idea 2. idf-ordered terms
+??? When considering the postings of query terms
+??? Look at them in order of decreasing idf
+??? High idf terms likely to contribute most to score
+??? As we update score contribution from each query term
+??? Stop if doc scores relatively unchanged
+??? Can apply to cosine or some other net scores
+Department of Informatics, UC Irvine 39
+-- Page 43 --
+Parametric and zone indexes
+??? Thus far, a doc has been a sequence of terms
+??? In fact documents have multiple parts, some with special
+semantics:
+??? Author
+??? Title
+??? Date of publication
+??? Language
+??? Format
+??? etc.
+??? These constitute the metadata about a document
+Department of Informatics, UC Irvine 43
+-- Page 46 --
+Fields
+??? We sometimes wish to search by these metadata
+??? E.g., find docs authored by William Shakespeare in the year 1601,
+containing alas poor Yorick
+??? Year = 1601 is an example of a field
+??? Also, author last name = shakespeare, etc.
+??? Field or parametric index: postings for each field value
+??? Sometimes build range trees (e.g., for dates)
+??? Field query typically treated as conjunction
+??? (doc must be authored by shakespeare)
+Department of Informatics, UC Irvine 46
+-- Page 50 --
+Zone
+??? A zone is a region of the doc that can contain an arbitrary
+amount of text, e.g.,
+??? Title
+??? Abstract
+??? References ???
+??? Build inverted indexes on zones as well to permit querying
+??? E.g., ???find docs with merchant in the title zone and matching
+the query gentle rain???
+Department of Informatics, UC Irvine 50
+-- Page 52 --
+Example zone indexes
+Encode zones in dictionary vs. postings.
+Department of Informatics, UC Irvine 52
+-- Page 53 --
+Tiered indexes
+??? Break postings up into a hierarchy of lists
+??? Most important
+??? ???
+??? Least important
+??? Can be done by g(d) or another measure
+??? Inverted index thus broken up into tiers of decreasing
+importance
+??? At query time use top tier unless it fails to yield K docs
+??? If so drop to lower tiers
+Department of Informatics, UC Irvine 53
+-- Page 54 --
+Tiered indexes
+??? Break postings up into a hierarchy of lists
+??? Most important
+??? ???
+??? Least important
+??? Can be done by g(d) or another measure (zone weight, tf-idf,
+etc???)
+??? Inverted index thus broken up into tiers of decreasing
+importance
+??? At query time use top tier unless it fails to yield K docs
+??? If so drop to lower tiers
+Department of Informatics, UC Irvine 54
+-- Page 57 --
+Example tiered index
+Department of Informatics, UC Irvine 57
+-- Page 58 --
+Query term proximity
+??? Free text queries: just a set of terms typed into the query box
+??? common on the web
+??? Users prefer docs in which query terms occur within close
+proximity of each other
+??? Let w be the smallest window in a doc containing all query
+terms, e.g.,
+??? For the query strained mercy the smallest window in the doc The
+quality of mercy is not strained is 4 (words)
+??? Intuition : the smaller w is, the better the document matches the
+query.
+??? Would like scoring function to take this into account.
+Department of Informatics, UC Irvine 58
+-- Page 64 --
+Architecture
+Ranking
+Index Creation Index
+Log
+Evaluation
+Local
+Text Acquisition UI
+Document
+Store
+Web Pages
+Department of Informatics, UC Irvine 64
+spetS
+gnissecorperP
+ssecorP
+gniyreuQ
+Text Transformation/Processing
+-- Page 65 --
+Query parsers
+??? Free text query from user may in fact spawn one or more
+queries to the indexes, e.g., query rising interest rates
+??? Run the query as a phrase query
+??? If <K docs contain the phrase rising interest rates, run the two phrase
+queries rising interest and interest rates
+??? If we still have <K docs, run the vector space query rising interest rates
+??? Rank matching docs by vector space scoring
+??? This sequence is issued by a query parser
+??? Some method that will transform a user query into a stream of
+multiple queries.
+Department of Informatics, UC Irvine 65
+-- Page 68 --
+Aggregate scores
+??? We???ve seen that score functions can combine cosine, static
+quality, proximity, etc.
+??? How do we know the best combination?
+??? User surveys : ask real people to use your search engine (think MS3!)
+??? Some applications ??? expert-tuned
+??? Hand-tune real-life systems is hard (e.g. tens or hundreds of possible
+threshold choices, what to consider or not, etc.)
+??? Increasingly common technique: machine-learning
+Department of Informatics, UC Irvine 68
+-- Page 70 --
+Putting it all together
+Department of Informatics, UC Irvine 70
+-- Page 71 --
+Architecture
+Ranking
+Index Creation Index
+Log
+Evaluation
+Local
+Text Acquisition UI
+Document
+Store
+Web Pages
+Department of Informatics, UC Irvine 71
+spetS
+gnissecorperP
+ssecorP
+gniyreuQ
+Text Transformation/Processing
+

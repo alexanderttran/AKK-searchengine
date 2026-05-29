@@ -5,6 +5,30 @@ TEAM BREAKDOWN (Kenrich, Alexander, Kenny):
 This class handles interactive user query execution. It loads our lightweight
 mapping assets into RAM at startup and maintains a persistent, open read stream
 to our flat file database on disk to minimize query latency.
+
+MILESTONE 3 RANKING IMPROVEMENTS:
+Three heuristics from Lectures 21-23 are now implemented:
+
+  1. HIGH-IDF INDEX ELIMINATION (Lec 22, p.38-40)
+     Before running the AND intersection, any query term whose IDF falls below
+     IDF_THRESHOLD is discarded. Stop-words like "what", "are", "the" have very
+     low IDF and almost never change final rankings — dropping them avoids the
+     common problem where a ubiquitous word crushes the AND intersection to zero.
+     A minimum of 1 term is always kept so single-word queries still work.
+
+  2. SOFT CONJUNCTION FALLBACK (Lec 22, p.41-46)
+     The slides recommend relaxing strict AND when too few results surface.
+     After strict N-of-N AND, the engine iteratively drops the rarest term
+     (lowest IDF) and widens to N-1-of-N, then N-2-of-N, etc., until at
+     least MIN_RESULTS docs are found. Documents matching more terms are
+     scored higher, so the top results naturally reflect the best matches.
+
+  3. QUERY TERM PROXIMITY SCORING (Lec 23, p.58-63)
+     Position lists are already stored in every posting. We now use them:
+     for each candidate document, the minimum spanning window (smallest
+     contiguous word range containing all query terms) is computed. A
+     proximity bonus of PROXIMITY_WEIGHT / (1 + min_window) is added to the
+     TF-IDF score — documents where query terms appear close together rank higher.
 """
 
 import json
@@ -18,6 +42,20 @@ GLOBAL_INDEX_PATH = Path("global_index.txt")
 LEXICON_PATH = Path("lexicon.json")
 URL_MAP_PATH = Path("url_map.json")
 TOKEN_PATTERN = re.compile(r'[a-zA-Z0-9]+')
+
+# --- Heuristic Tuning Constants ---
+# Heuristic 1: Terms with IDF below this threshold are considered stop-words
+# and dropped from the AND intersection before fetching postings.
+# IDF = log10(N / df). At N=55,000 docs, IDF < 1.0 means df > 5,500 (~10% of corpus).
+IDF_THRESHOLD = 1.0
+
+# Heuristic 2: Minimum results before the soft-conjunction fallback kicks in.
+MIN_RESULTS = 5
+
+# Heuristic 3: Weight applied to the proximity bonus (1 / (1 + min_window)).
+# Set to 0.0 to disable proximity scoring entirely.
+PROXIMITY_WEIGHT = 3.0
+
 
 class SearchEngine:
     def __init__(self):
@@ -35,6 +73,7 @@ class SearchEngine:
 
         self.lexicon = self._load_lexicon()
         self.url_map = self._load_url_map()
+        self.total_docs = len(self.url_map)
         self.f_index = open(GLOBAL_INDEX_PATH, 'rb')
 
         print(f"Search engine initialized, vocabulary size: {len(self.lexicon)} terms")
@@ -125,23 +164,91 @@ class SearchEngine:
 
         return result
 
-    def _calculate_idf_map(self, query_stems, term_postings_dict, total_docs):
+    def _calculate_idf_map(self, query_stems, term_postings_dict):
         """Precomputes Inverse Document Frequencies (IDF) for each query term."""
         #idf = inverse document frequency
         idf_map = {}
         for stem in query_stems:
             doc_freq = len(term_postings_dict[stem])
-            idf_map[stem] = math.log10(total_docs / doc_freq) if doc_freq > 0 else 0
+            idf_map[stem] = math.log10(self.total_docs / doc_freq) if doc_freq > 0 else 0
         return idf_map
 
+    # -------------------------------------------------------------------------
+    # HEURISTIC 3: Query Term Proximity Scoring (Lecture 23, p. 58-63)
+    # -------------------------------------------------------------------------
+    def _compute_proximity_bonus(self, target_doc_id, query_stems, term_postings_dict):
+        """Computes a proximity bonus for a document based on the minimum spanning
+        window (w) across all query terms' position lists.
+
+        The slides define w as the smallest contiguous word-position range
+        that contains at least one occurrence of every query term. A smaller w
+        means the terms cluster together, which is a strong relevance signal.
+
+        Bonus formula:  PROXIMITY_WEIGHT / (1 + w)
+        - When terms are adjacent (w=1), bonus approaches PROXIMITY_WEIGHT.
+        - When terms are spread far apart (large w), bonus approaches 0.
+
+        If any query term is missing from the document, returns 0 (no bonus).
+        """
+        if PROXIMITY_WEIGHT == 0.0 or len(query_stems) <= 1:
+            return 0.0
+
+        # Collect the positions list for each query term in this document.
+        positions_per_term = []
+        for stem in query_stems:
+            posting = self._binary_search_posting(term_postings_dict[stem], target_doc_id)
+            if posting is None:
+                # Term is absent from this document — proximity is undefined.
+                return 0.0
+            _, _, positions, _ = posting
+            if not positions:
+                return 0.0
+            positions_per_term.append(sorted(positions))
+
+        # Sliding-window minimum-span algorithm:
+        # Use one pointer per term, always advance the pointer pointing to the
+        # globally smallest position. Track the current span [min_pos, max_pos].
+        import heapq
+        # Heap entries: (position, term_index, list_index)
+        heap = []
+        for term_idx, pos_list in enumerate(positions_per_term):
+            heapq.heappush(heap, (pos_list[0], term_idx, 0))
+
+        # Track the current max across all term-front pointers
+        current_max = max(pos_list[0] for pos_list in positions_per_term)
+        min_window = float('inf')
+
+        while True:
+            current_min, term_idx, list_idx = heapq.heappop(heap)
+            window = current_max - current_min
+            if window < min_window:
+                min_window = window
+
+            # Advance this term's pointer to its next position
+            next_list_idx = list_idx + 1
+            if next_list_idx >= len(positions_per_term[term_idx]):
+                # This term has no more positions — we can't improve further
+                break
+
+            next_pos = positions_per_term[term_idx][next_list_idx]
+            heapq.heappush(heap, (next_pos, term_idx, next_list_idx))
+            if next_pos > current_max:
+                current_max = next_pos
+
+        return PROXIMITY_WEIGHT / (1.0 + min_window)
+
     def _score_single_document(self, base_posting, query_stems, term_postings_dict, idf_map):
-        """Calculates the cumulative log-dampened TF-IDF score for a single document across all query terms."""
+        """Calculates the cumulative log-dampened TF-IDF score for a single document
+        across all query terms, plus the query-term proximity bonus.
+        """
         target_doc_id = base_posting[0]
         doc_score = 0.0
 
         # Iterates through each query term to fetch its stats via binary search,
         # accumulating the weighted TF, IDF, and structural boost into a final score.
         for stem in query_stems:
+            if stem not in term_postings_dict:
+                continue
             stem_postings = term_postings_dict[stem]
             posting = self._binary_search_posting(stem_postings, target_doc_id)
 
@@ -149,10 +256,13 @@ class SearchEngine:
                 doc_id, term_freq, positions, importance = posting
 
                 weighted_term_freq = 1 + math.log10(term_freq)
-                idf = idf_map[stem]
+                idf = idf_map.get(stem, 0)
                 boost = 2.5 if importance == 1 else 1.0
 
                 doc_score += weighted_term_freq * boost * idf
+
+        # HEURISTIC 3: Add proximity bonus on top of TF-IDF score.
+        doc_score += self._compute_proximity_bonus(target_doc_id, query_stems, term_postings_dict)
 
         return doc_score
 
@@ -160,12 +270,11 @@ class SearchEngine:
         """Calculates log-dampened TF-IDF relevance scores for each matching document.
         Precomputes Inverse Document Frequencies (IDF) per query term, uses binary
         search to look up missing term statistics, applies a 2.5x multiplier boost
-        for HTML title/header matches, and sorts the final list descending.
+        for HTML title/header matches, adds proximity bonus, and sorts descending.
         """
-        total_docs = len(self.url_map)
         scored_documents = []
 
-        idf_map = self._calculate_idf_map(query_stems, term_postings_dict, total_docs)
+        idf_map = self._calculate_idf_map(query_stems, term_postings_dict)
 
         # Calculates the combined TF-IDF score for each document that survived the
         # intersection filtering, pairing the final score with the document data.
@@ -183,17 +292,63 @@ class SearchEngine:
         raw_tokens = TOKEN_PATTERN.findall(query_str.lower())
         return [get_stem(token) for token in raw_tokens]
 
-    def _fetch_all_postings(self, query_stems):
-        """Retrieves postings lists for all stems, caching duplicate terms to prevent redundant I/O."""
-        #retrieve postings arrays from disk and store in a dictionary
-        #stem : posting
-        term_postings_dict = {}
+    # -------------------------------------------------------------------------
+    # HEURISTIC 1: High-IDF Index Elimination (Lecture 22, p. 38-40)
+    # -------------------------------------------------------------------------
+    def _filter_low_idf_stems(self, query_stems):
+        """Drops query terms whose document frequency is so high that their IDF
+        falls below IDF_THRESHOLD — these are effectively stop-words that appear
+        in too many documents to meaningfully discriminate between results.
+
+        The lecture example: for "catcher in the rye", drop "in" and "the"
+        because they contribute almost nothing to ranking while ballooning the
+        postings lists that must be intersected.
+
+        Always retains at least one stem (the highest-IDF one) so that single-word
+        queries and short queries don't collapse to an empty term set.
+
+        Also drops any stem that doesn't exist in the lexicon at all, since those
+        would produce zero results regardless.
+        """
+        if not query_stems:
+            return query_stems
+
+        # Score each stem by its approximate IDF (using its postings length in lexicon).
+        # Terms not in the lexicon get IDF=0 and are always dropped.
+        stem_idfs = []
+        for stem in query_stems:
+            if stem in self.lexicon:
+                # We need actual postings length — fetch it quickly.
+                postings = self._fetch_postings(stem)
+                df = len(postings)
+                idf = math.log10(self.total_docs / df) if df > 0 else 0
+                stem_idfs.append((stem, idf, postings))
+            else:
+                stem_idfs.append((stem, 0.0, []))
+
+        # Sort descending by IDF so we can always keep the top term.
+        stem_idfs.sort(key=lambda x: x[1], reverse=True)
+
+        # Keep terms above the threshold; always keep at least the highest-IDF term.
+        filtered = []
+        postings_cache = {}
+        for i, (stem, idf, postings) in enumerate(stem_idfs):
+            if idf >= IDF_THRESHOLD or (not filtered):
+                if postings:  # skip terms with zero postings
+                    filtered.append(stem)
+                    postings_cache[stem] = postings
+
+        print(f"After IDF filtering: keeping {len(filtered)}/{len(query_stems)} stems: {filtered}")
+        return filtered, postings_cache
+
+    def _fetch_all_postings(self, query_stems, postings_cache=None):
+        """Retrieves postings lists for all stems, using cache to prevent redundant I/O."""
+        term_postings_dict = dict(postings_cache) if postings_cache else {}
         for stem in query_stems:
             if stem in term_postings_dict:
                 continue
             postings = self._fetch_postings(stem)
             if not postings:
-                #if even just one term has no matches, total AND intersection is empty
                 return None
             term_postings_dict[stem] = postings
         return term_postings_dict
@@ -210,26 +365,55 @@ class SearchEngine:
 
     def search(self, query_str):
         """Master orchestration pipeline method. Tokenizes raw string text inputs,
-        stems them, fetches matching posting records from disk (with duplicate-term
-        caching), evaluates the multi-term intersection, ranks findings via TF-IDF,
-        and resolves the top 5 internal DocIDs to human-readable string URLs.
+        stems them, applies High-IDF index elimination (Heuristic 1), fetches
+        matching posting records from disk, evaluates the multi-term intersection
+        with Soft Conjunction fallback (Heuristic 2), ranks findings via TF-IDF
+        with Proximity Scoring (Heuristic 3), and resolves the top 5 DocIDs to URLs.
         """
         query_stems = self._get_query_stems(query_str)
         if not query_stems:
             return []
 
-        term_postings_dict = self._fetch_all_postings(query_stems)
-        if term_postings_dict is None:
+        # HEURISTIC 1: Drop low-IDF (stop-word) terms. Also fetches postings for
+        # the surviving terms as a side effect (cached to avoid double disk reads).
+        filtered_stems, postings_cache = self._filter_low_idf_stems(query_stems)
+
+        if not filtered_stems:
             return []
 
-        #find postings that intersect with the queries
-        postings_list = list(term_postings_dict.values())
-        matched_postings = self._intersect_postings(query_stems, postings_list)
+        # Build the full postings dict from cache (no re-fetching).
+        term_postings_dict = dict(postings_cache)
 
-        if not matched_postings:
+        # HEURISTIC 2: Soft Conjunction Fallback (Lecture 22, p. 41-46).
+        # Start with strict AND across all filtered stems. If we get fewer than
+        # MIN_RESULTS, iteratively drop the lowest-IDF term and retry.
+        # This implements the lecture's "3 of 4 terms" iterative fallback.
+        active_stems = list(filtered_stems)  # already sorted high-IDF first
+        ranked_postings = []
+
+        while active_stems:
+            postings_list = [term_postings_dict[s] for s in active_stems]
+            matched_postings = self._intersect_postings(active_stems, postings_list)
+
+            if matched_postings:
+                ranked_postings = self._rank_documents(
+                    matched_postings, active_stems, term_postings_dict
+                )
+
+            if len(ranked_postings) >= MIN_RESULTS:
+                print(f"AND({len(active_stems)} terms) → {len(ranked_postings)} results. Done.")
+                break
+
+            # Not enough results — drop the lowest-IDF term (last in the sorted list)
+            # and widen to N-1-of-N matching.
+            dropped = active_stems.pop()  # lowest IDF is at the end
+            print(f"Soft fallback: dropped '{dropped}', retrying with {active_stems}")
+
+            if not active_stems:
+                break
+
+        if not ranked_postings:
             return []
-
-        ranked_postings = self._rank_documents(matched_postings, query_stems, term_postings_dict)
 
         return self._resolve_top_urls(ranked_postings)
 
@@ -348,7 +532,7 @@ def main():
     ]
 
     print("\n========================================================")
-    print("      UCI ICS SEARCH ENGINE - M2 BENCHMARK RUNNER       ")
+    print("      UCI ICS SEARCH ENGINE - M3 BENCHMARK RUNNER       ")
     print("========================================================\n")
 
     for query in test_queries: #replace with good or poor queries
